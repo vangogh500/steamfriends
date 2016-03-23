@@ -1,2 +1,0 @@
-# steamfriends
-Steam Friends

@@ -1,0 +1,36 @@
+0 info it worked if it ends with ok
+1 verbose cli [ 'node', '/usr/local/bin/npm', 'run', 'serve' ]
+2 info using npm@2.11.3
+3 info using node@v0.12.7
+4 verbose run-script [ 'preserve', 'serve', 'postserve' ]
+5 info preserve workshop-4-5@0.0.1
+6 info serve workshop-4-5@0.0.1
+7 verbose unsafe-perm in lifecycle true
+8 info workshop-4-5@0.0.1 Failed to exec serve script
+9 verbose stack Error: workshop-4-5@0.0.1 serve: `webpack-dev-server --content-base build`
+9 verbose stack spawn ENOENT
+9 verbose stack     at ChildProcess.<anonymous> (/usr/local/lib/node_modules/npm/lib/utils/spawn.js:17:16)
+9 verbose stack     at ChildProcess.emit (events.js:110:17)
+9 verbose stack     at maybeClose (child_process.js:1015:16)
+9 verbose stack     at Process.ChildProcess._handle.onexit (child_process.js:1087:5)
+10 verbose pkgid workshop-4-5@0.0.1
+11 verbose cwd /Users/kaisanomatsuda/workshop-4-and-5-react-and-mocking-a-server-vangogh500/app
+12 error Darwin 14.5.0
+13 error argv "node" "/usr/local/bin/npm" "run" "serve"
+14 error node v0.12.7
+15 error npm  v2.11.3
+16 error file sh
+17 error code ELIFECYCLE
+18 error errno ENOENT
+19 error syscall spawn
+20 error workshop-4-5@0.0.1 serve: `webpack-dev-server --content-base build`
+20 error spawn ENOENT
+21 error Failed at the workshop-4-5@0.0.1 serve script 'webpack-dev-server --content-base build'.
+21 error This is most likely a problem with the workshop-4-5 package,
+21 error not with npm itself.
+21 error Tell the author that this fails on your system:
+21 error     webpack-dev-server --content-base build
+21 error You can get their info via:
+21 error     npm owner ls workshop-4-5
+21 error There is likely additional logging output above.
+22 verbose exit [ 1, true ]
