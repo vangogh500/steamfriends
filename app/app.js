@@ -17,7 +17,7 @@ class App extends React.Component {
             </div>
             <ul className="nav navbar-nav navbar-right">
               <li><Link to="/about">About</Link></li>
-              <li><a href="#">Github</a></li>
+              <li><a href="https://github.com/vangogh500/steamfriends">Github</a></li>
             </ul>
           </div>
         </nav>
