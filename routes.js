@@ -5,16 +5,21 @@ var async = require('async');
 function getOwnedGamesInfo(req,cb) {
   if(typeof req.query.id === 'string') {
     var arr = [];
-    steam.getOwnedGames(req.query.id, function(data) {
-      data.id = req.query.id;
-      arr.push(data);
-      cb(arr);
+    steam.getOwnedGames(req.query.id, function(data,err) {
+      if(err) {
+        cb(arr,err);
+      }
+      else {
+        data.id = req.query.id;
+        arr.push(data);
+        cb(arr);
+      }
     });
   }
   else {
     var arr = [];
     async.each(req.query.id, function(id, cb) {
-      steam.getOwnedGames(id, function(data) {
+      steam.getOwnedGames(id, function(data, err) {
         data.id = id;
         arr.push(data);
         cb();
@@ -51,13 +56,23 @@ function getGamesInfo(req,cb) {
 //routing
 module.exports = function(app) {
   app.get('/api/user', function(req,res) {
-    steam.getPlayerInfo(req.query.id, function(data) {
-      res.json(data);
+    steam.getPlayerInfo(req.query.id, function(data, err) {
+      if(err) {
+        res.status(404).json({errorMsg: err});
+      }
+      else {
+        res.json(data);
+      }
     });
   });
   app.get('/api/games', function(req,res) {
-    getOwnedGamesInfo(req, function(data) {
-      res.json(data)
+    getOwnedGamesInfo(req, function(data, err) {
+      if(err) {
+        res.status(404).json({errorMsg: err});
+      }
+      else {
+        res.json(data);
+      }
     });
   });
   app.get('/api/gameInfo', function(req,res) {

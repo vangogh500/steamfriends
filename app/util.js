@@ -7,3 +7,9 @@ export function compareOwnedBy(a,b) {
     return 0;
   }
 }
+
+export function removeUniqueGames(arr2) {
+  var arr = arr2;
+  
+  return arr;
+}

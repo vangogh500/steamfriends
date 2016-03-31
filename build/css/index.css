@@ -144,7 +144,7 @@ body a {
   margin-right: 5px;
 }
 
-.alert {
+.alert-icon {
   width: 100%;
   color: orange;
   font-size: 8em;
@@ -168,6 +168,12 @@ body a {
   color: #FFF;
   width: 100%;
   text-align: center;
+}
+
+.loadMsg {
+  text-align: center;
+  font-size: 120px;
+  color: orange;
 }
 
 .loader,

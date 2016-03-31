@@ -1,5 +1,5 @@
 import React from 'react';
-import { compareOwnedBy } from '../util.js';
+import { compareOwnedBy, removeUniqueGames } from '../util.js';
 import { OverlayTrigger, Tooltip } from 'react-bootstrap';
 import async from 'async';
 
@@ -9,74 +9,105 @@ export default class Query extends React.Component {
     this.state = {
       loaded: false,
       error: false,
-      alert: 'Loading User Information...',
+      loadMsg: 'Loading User Information...',
+      alert: false,
+      couldNotFind: [],
       you: {},
       friends: [],
       games: []
     };
   }
   componentDidMount() {
-    $.ajax({
-      url: '/api/user/?id=' + this.props.location.query.ids.join('&id='),
-      type: 'GET',
-      success: (userInfo) => {
-        this.setState({alert: 'Aquiring Game Libraries...', you: userInfo.splice(0,1)[0], friends: userInfo});
-        $.ajax({
-          url: '/api/games/?id=' + this.props.location.query.ids.join('&id='),
-          type: 'GET',
-          success: (gameInfo) => {
-            console.log(gameInfo);
-            this.setState({loaded: true, games: this.processGameData(gameInfo).sort(compareOwnedBy)});
-            async.eachSeries(this.processGameData(gameInfo), (game, cb) => {
-              $.ajax({
-                url: '/api/gameInfo/?id=' + game.appid,
-                type: 'GET',
-                success: (gd) => {
-                  if(gd) {
-                    for(var i=0; i<this.state.games.length; i++) {
-                      if(gd.steam_appid === this.state.games[i].appid) {
-                        if(gd.is_free) {
-                          this.state.games[i].price = 'Free';
-                        }
-                        else if(gd.price_overview) {
-                          this.state.games[i].price = gd.price_overview.final / Math.pow(10,2);
-                        }
-                        if(gd.platforms) {
-                          this.state.games[i].platforms = gd.platforms;
-                        }
-                        this.state.games[i].multiplayer = false;
-                        if(gd.categories) {
-                          for(var j=0; j<gd.categories.length; j++) {
-                            if(["Multi-player","Massively Multiplayer", "Co-op", "MMO"].indexOf(gd.categories[j].description) != -1) {
-                              this.state.games[i].multiplayer = true;
-                              break;
+    if(typeof this.props.location.query.ids === 'string') {
+      this.setState({error: true, loadMsg: 'Please enter more than 1 user'});
+    }
+    else {
+      $.ajax({
+        url: '/api/user/?id=' + this.props.location.query.ids.join('&id='),
+        type: 'GET',
+        success: (userInfo) => {
+          var x = 0;
+          var al = false;
+          var missing = [];
+          var valid = [];
+          for(var i=0; i<this.props.location.query.ids.length; i++) {
+            var found = false;
+            var upper = (i > userInfo.length) ? userInfo.length -1 : i;
+            for(var j=0; j<=upper; j++) {
+              if(this.props.location.query.ids[i] == userInfo[j].steamid) {
+                found = true;
+                valid.push(userInfo[j].steamid);
+                break;
+              }
+            }
+            if(!found) {
+              al = true;
+              missing.push(this.props.location.query.ids[i]);
+            }
+        }
+          console.log(missing);
+          if(valid.length <= 1) {
+            this.setState({error: true, loadMsg: 'Please enter more than 1 valid user', alert: al, couldNotFind: missing});
+          }
+          else {
+            this.setState({loadMsg: 'Aquiring Game Libraries...', you: userInfo.splice(0,1)[0], friends: userInfo, couldNotFind: missing});
+            $.ajax({
+              url: '/api/games/?id=' + valid.join('&id='),
+              type: 'GET',
+              success: (gameInfo) => {
+                var gamesList = this.processGameData(gameInfo).sort(compareOwnedBy).filter(function(val) { return !(val.ownedBy.length === 1) });
+                this.setState({loaded: true, games: gamesList});
+                async.eachSeries(gamesList, (game, cb) => {
+                  $.ajax({
+                    url: '/api/gameInfo/?id=' + game.appid,
+                    type: 'GET',
+                    success: (gd) => {
+                      if(gd) {
+                        for(var i=0; i<this.state.games.length; i++) {
+                          if(gd.steam_appid === this.state.games[i].appid) {
+                            if(gd.is_free) {
+                              this.state.games[i].price = 'Free';
                             }
+                            else if(gd.price_overview) {
+                              this.state.games[i].price = gd.price_overview.final / Math.pow(10,2);
+                            }
+                            if(gd.platforms) {
+                              this.state.games[i].platforms = gd.platforms;
+                            }
+                            this.state.games[i].multiplayer = false;
+                            if(gd.categories) {
+                              for(var j=0; j<gd.categories.length; j++) {
+                                if(["Multi-player","Massively Multiplayer", "Co-op", "MMO"].indexOf(gd.categories[j].description) != -1) {
+                                  this.state.games[i].multiplayer = true;
+                                  break;
+                                }
+                              }
+                            }
+                            this.state.games[i].fullyLoaded = true;
+                            this.setState({games: this.state.games});
+                            break;
                           }
                         }
-                        this.state.games[i].fullyLoaded = true;
-                        this.setState({games: this.state.games});
-                        console.log(this.state.games[i]);
-                        break;
                       }
+                      cb();
+                    },
+                    error: (gd) => {
+                      cb();
                     }
-                  }
-                  cb();
-                },
-                error: (gd) => {
-                  cb();
-                }
-              });
+                  });
+                });
+              },
+              error: (gameInfo) => {
+                this.setState({loadMsg: 'There was an error contacting the server!', error: true});
+              }
             });
-          },
-          error: (gameInfo) => {
-            this.setState({alert: 'There was an error contacting the server!', error: true});
           }
-        });
-      },
-      error: (userInfo) => {
-        this.setState({alert: 'There was an error contacting the server!', error: true});
-      }
-    });
+        },
+        error: (userInfo) => {
+          this.setState({loadMsg: 'There was an error contacting the server!', error: true});
+        }
+      });
+    }
   }
   processGameData(gameData) {
     var gameList = [];
@@ -126,30 +157,44 @@ export default class Query extends React.Component {
   }
   handleUserDisplay() {
     if(this.state.loaded) {
+      var alertBanner = () => {
+        console.log(this.state.couldNotFind.length);
+        if(this.state.couldNotFind.length > 0) {
+          return (
+            <div className="alert alert-warning">
+              {"The following steamids could not be located " + this.state.couldNotFind.join(", ") + ". "}
+              Please make sure that you are using the steamid and not steamname
+            </div>
+          );
+        }
+      }
       return (
-        <div className="userContainer">
-          <div className="userContainerHeader">
-            <h3>Users</h3>
-          </div>
-          <div className="userContainerContent">
-            <div className="row">
-              <div className="col-md-4">
-                <h4 className="youTitle">You</h4>
-                <div className="you">
-                  <img src={this.state.you.avatarfull} className="avatar"/>
-                  <h4>{this.state.you.personaname}</h4>
+        <div>
+          {alertBanner()}
+          <div className="userContainer">
+            <div className="userContainerHeader">
+              <h3>Users</h3>
+            </div>
+            <div className="userContainerContent">
+              <div className="row">
+                <div className="col-md-4">
+                  <h4 className="youTitle">You</h4>
+                  <div className="you">
+                    <img src={this.state.you.avatarfull} className="avatar"/>
+                    <h4>{this.state.you.personaname}</h4>
+                  </div>
                 </div>
-              </div>
-              <div className="col-md-8 friends">
-                <h4 className="friendTitle">Your Friends</h4>
-                {this.state.friends.map((user, i) => {
-                  return(
-                    <div className="friendContainer" key={user.steamid} onClick={(e) => this.handleSwitchUser(e, user, i)}>
-                      <img src={user.avatarfull} className="avatar"/>
-                      <h5>{user.personaname}</h5>
-                    </div>
-                  );
-                })}
+                <div className="col-md-8 friends">
+                  <h4 className="friendTitle">Your Friends</h4>
+                  {this.state.friends.map((user, i) => {
+                    return(
+                      <div className="friendContainer" key={user.steamid} onClick={(e) => this.handleSwitchUser(e, user, i)}>
+                        <img src={user.avatarfull} className="avatar"/>
+                        <h5>{user.personaname}</h5>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -238,10 +283,22 @@ export default class Query extends React.Component {
     }
     else {
       if(this.state.error) {
+        var alertMsg = () => {
+          if(this.state.alert) {
+            return (
+              <div className="alert alert-warning">
+                {"The following steamids could not be located " + this.state.couldNotFind.join(", ") + ". "}
+                Please make sure that you are using the steamid and not steamname.
+              </div>
+
+            );
+          }
+        }
         return (
           <div className="loaderContainer">
-            <i className="fa fa-exclamation-triangle alert"></i>
-            <h4 align="center">{this.state.alert}</h4>
+            <h3 className="loadMsg"><i className="fa fa-exclamation-triangle"></i></h3>
+            <h4 align="center">{this.state.loadMsg}</h4>
+            {alertMsg()}
           </div>
         )
       }
@@ -249,7 +306,7 @@ export default class Query extends React.Component {
         return (
           <div className="loaderContainer">
             <div className="loader"></div>
-            <h4 align="center">{this.state.alert}</h4>
+            <h4 align="center">{this.state.loadMsg}</h4>
           </div>
         )
       }
@@ -320,7 +377,7 @@ export default class Query extends React.Component {
 
   render() {
     return (
-      <div className={"container"}>
+      <div className="container">
         {this.handleUserDisplay()}
         {this.handleGameDisplay()}
         {this.handleLoading()}
